@@ -1,0 +1,26 @@
+DRAFTMETER: install in 1 minute
+================================
+
+1. Drag "Draftmeter" onto the "Applications" folder in this window.
+
+2. Open it from Applications. macOS will block it the first time, because
+   Draftmeter is a free hobby app that isn't registered with Apple:
+     - Click "Done" (or "OK") in the warning.
+     - Open System Settings > Privacy & Security, scroll down, and click
+       "Open Anyway" next to the Draftmeter message. Confirm with your password.
+   You only need to do this once.
+
+   (Older macOS: right-click Draftmeter > Open > Open.)
+
+3. Draftmeter appears in the DOCK (quit it there with right-click > Quit, or
+   Cmd+Q) and as a small gauge icon in the MENU BAR at the top right, where
+   all options are. A setup window walks you through the rest:
+     - creating a second, free Zwift account (takes 2 minutes)
+     - finding yourself
+   Your normal Zwift password is never asked for.
+
+4. Ride in Zwift. The overlay fills in a few seconds after you start pedalling.
+   "How to use..." in the menu explains every number.
+
+Note: Draftmeter is not made by or affiliated with Zwift. It uses Zwift's
+unofficial spectator connection. Use at your own risk.

@@ -1,0 +1,384 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<title>Draftmeter</title>
+<style>
+    :root {
+        --bg: rgba(14, 16, 21, 0.74);
+        --line: rgba(255, 255, 255, 0.08);
+        --text: #f2f4f7;
+        --muted: #9aa3b2;
+        --low: #6b7a90;
+        --mid: #2dd4bf;
+        --high: #f59e0b;
+        --max: #ef4444;
+        --ahead: #93c5fd;
+        --behind: #fca5a5;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+        margin: 0;
+        height: 100%;
+        background: transparent;
+        color: var(--text);
+        font: 13px/1.3 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Helvetica Neue", sans-serif;
+        font-variant-numeric: tabular-nums;
+        overflow: hidden;
+        user-select: none;
+        cursor: default;
+    }
+    body.unlocked { -webkit-app-region: drag; }
+    #wrap {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 8px;
+    }
+    body.unlocked #wrap {
+        outline: 2px dashed rgba(255, 255, 255, 0.35);
+        outline-offset: -2px;
+        border-radius: 16px;
+    }
+    .card {
+        background: var(--bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 10px 12px;
+    }
+    .hidden { display: none !important; }
+    #hint {
+        font-size: 11px;
+        color: var(--text);
+        background: rgba(59, 130, 246, 0.85);
+        border-radius: 8px;
+        padding: 5px 8px;
+        text-align: center;
+    }
+    #status {
+        text-align: center;
+        color: var(--muted);
+        padding: 16px 12px;
+    }
+    #status b { color: var(--text); display: block; margin-bottom: 4px; font-size: 14px; }
+
+    /* Gauge */
+    #gauge-card { padding: 6px 8px 8px; }
+    #gauge { width: 100%; display: block; }
+    #gauge .track { stroke: rgba(255,255,255,0.10); }
+    #gauge .tick { stroke: rgba(255,255,255,0.35); }
+    #gauge .ticklabel { fill: var(--muted); font-size: 11px; text-anchor: middle; }
+    #gauge .title { fill: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-anchor: middle; }
+    #gauge .value { fill: var(--text); font-size: 42px; font-weight: 800; text-anchor: middle; }
+    #gauge .unit { fill: var(--muted); font-size: 11px; text-anchor: middle; letter-spacing: 0.04em; }
+    #needle { stroke: var(--text); stroke-width: 3; stroke-linecap: round; }
+    #hub { fill: var(--text); }
+
+    /* Ride stats */
+    #ride { display: flex; justify-content: space-between; text-align: center; }
+    #ride > div { flex: 1; }
+    #ride .v { font-size: 17px; font-weight: 700; }
+    #ride .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* Nearby */
+    #nearby { padding: 6px 4px; flex: 0 1 auto; overflow: hidden; }
+    #nearby table { width: 100%; border-collapse: collapse; }
+    #nearby td { padding: 3px 6px; white-space: nowrap; }
+    #nearby td.gap { width: 52px; text-align: right; font-weight: 600; }
+    #nearby td.name { overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+    #nearby td.num { text-align: right; color: var(--muted); width: 44px; }
+    #nearby tr.ahead td.gap { color: var(--ahead); }
+    #nearby tr.behind td.gap { color: var(--behind); }
+    #nearby tr.me td { background: rgba(255,255,255,0.08); font-weight: 700; }
+    #nearby tr.me td:first-child { border-radius: 6px 0 0 6px; }
+    #nearby tr.me td:last-child { border-radius: 0 6px 6px 0; }
+    #nearby .est { opacity: 0.6; }
+    #nearby .empty { color: var(--muted); text-align: center; padding: 6px; }
+    #nearby .head td { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    #nearby td.bat { width: 58px; padding-right: 8px; }
+    .bar { position: relative; height: 14px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    .bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+    .bar > b { position: absolute; inset: 0; font-size: 10px; line-height: 14px; text-align: center; font-weight: 700; color: #fff; text-shadow: 0 0 3px #000; }
+    .bar.fresh { opacity: 0.4; }
+    .bar.none > b { color: var(--muted); text-shadow: none; font-weight: 500; }
+    #groupline { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; padding: 2px 6px 4px; }
+    #groupline b { color: var(--text); }
+    #attack {
+        margin: 0 2px 6px; padding: 6px 8px; border-radius: 8px; font-weight: 700; font-size: 12px;
+        background: linear-gradient(90deg, rgba(239,68,68,0.9), rgba(245,158,11,0.9)); color: #fff;
+        animation: pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes pulse { 50% { filter: brightness(1.25); } }
+
+    /* Terrain */
+    #terrain { padding: 8px 10px 6px; }
+    #climbtext { font-weight: 700; font-size: 13px; }
+    #climbtext .sub { color: var(--muted); font-weight: 500; }
+    #routename { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 1px; }
+    #profile { width: 100%; height: 56px; display: block; margin-top: 6px; }
+    #profile .area { fill: rgba(255,255,255,0.14); }
+    #profile .line { fill: none; stroke: rgba(255,255,255,0.55); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+    #profile .climb { fill: rgba(245,158,11,0.55); }
+    #profile .me { stroke: var(--mid); stroke-width: 2; vector-effect: non-scaling-stroke; }
+    #axis { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+    <div id="hint" class="hidden">Drag to move · drag edges to resize · ⌘⇧D to lock</div>
+
+    <div id="status" class="card"><b>Draftmeter</b>Starting…</div>
+
+    <div id="gauge-card" class="card hidden" data-section="gauge">
+        <svg id="gauge" viewBox="0 0 240 190">
+            <defs>
+                <linearGradient id="arcgrad" gradientUnits="userSpaceOnUse" x1="32" y1="0" x2="208" y2="0">
+                    <stop offset="0" stop-color="#2dd4bf"/>
+                    <stop offset="0.55" stop-color="#f59e0b"/>
+                    <stop offset="1" stop-color="#ef4444"/>
+                </linearGradient>
+            </defs>
+            <path class="track" id="track" fill="none" stroke-width="14" stroke-linecap="round"/>
+            <path id="valarc" fill="none" stroke="url(#arcgrad)" stroke-width="14" stroke-linecap="round"/>
+            <g id="ticks"></g>
+                        <line id="needle" x1="120" y1="112" x2="120" y2="40"/>
+            <circle id="hub" cx="120" cy="112" r="5"/>
+            <text class="title" x="120" y="138">DRAFT</text>
+            <text class="value" id="gval" x="120" y="176">0</text>
+            <text class="unit" x="120" y="189">W SAVED</text>
+        </svg>
+    </div>
+
+
+    <div id="ride" class="card hidden" data-section="ride">
+        <div><div class="v" id="avgdraft">–</div><div class="label">Avg draft W</div></div>
+        <div><div class="v" id="draftkj">–</div><div class="label">kJ saved</div></div>
+        <div><div class="v" id="draftpct">–</div><div class="label">In draft</div></div>
+    </div>
+
+    <div id="terrain" class="card hidden" data-section="terrain">
+        <div id="climbtext">–</div>
+        <div id="routename"></div>
+        <svg id="profile" viewBox="0 0 500 56" preserveAspectRatio="none"></svg>
+        <div id="axis"><span>now</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5 km</span></div>
+    </div>
+
+    <div id="nearby" class="card hidden" data-section="nearby">
+        <div id="attack" class="hidden"></div>
+        <div id="groupline"><span>Group battery <b id="grpbat">–</b> <span id="grpcount"></span></span><span>You <b id="mybat">–</b></span></div>
+        <table><tbody id="nearby-body"></tbody></table>
+    </div>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const CX = 120, CY = 112, R = 88;
+const A0 = 150, SWEEP = 240;  // degrees, clockwise from +x (screen coords)
+let gaugeMax = 300;
+let show = {gauge: true, ride: true, terrain: true, nearby: true};
+let live = false;
+let target = 0, shown = 0;
+
+function pt(deg, r) {
+    const a = deg * Math.PI / 180;
+    return [CX + r * Math.cos(a), CY + r * Math.sin(a)];
+}
+
+function arcPath(fromDeg, toDeg, r) {
+    const [x1, y1] = pt(fromDeg, r);
+    const [x2, y2] = pt(toDeg, r);
+    const large = (toDeg - fromDeg) > 180 ? 1 : 0;
+    return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+}
+
+function buildGauge() {
+    $('track').setAttribute('d', arcPath(A0, A0 + SWEEP, R));
+    const g = $('ticks');
+    g.innerHTML = '';
+    const step = gaugeMax <= 300 ? 50 : 100;
+    for (let v = 0; v <= gaugeMax; v += step) {
+        const deg = A0 + SWEEP * v / gaugeMax;
+        const [x1, y1] = pt(deg, R - 12);
+        const [x2, y2] = pt(deg, R - 18);
+        const [lx, ly] = pt(deg, R - 30);
+        g.insertAdjacentHTML('beforeend',
+            `<line class="tick" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="2"/>` +
+            `<text class="ticklabel" x="${lx}" y="${ly + 4}">${v}</text>`);
+    }
+}
+
+function drawGauge(v) {
+    const frac = Math.max(0, Math.min(1, v / gaugeMax));
+    const deg = A0 + SWEEP * frac;
+    $('valarc').setAttribute('d', frac > 0.002 ? arcPath(A0, deg, R) : '');
+    const [nx, ny] = pt(deg, R - 22);
+    $('needle').setAttribute('x2', nx);
+    $('needle').setAttribute('y2', ny);
+    $('gval').textContent = Math.round(v);
+}
+
+function animate() {
+    shown += (target - shown) * 0.18;
+    if (Math.abs(target - shown) < 0.4) {
+        shown = target;
+    }
+    drawGauge(shown);
+    requestAnimationFrame(animate);
+}
+
+function applySections() {
+    for (const el of document.querySelectorAll('[data-section]')) {
+        el.classList.toggle('hidden', !live || !show[el.dataset.section]);
+    }
+}
+
+const fmt = v => (v == null || Number.isNaN(v)) ? '–' : v;
+const fmtGap = g => (g > 0 ? '+' : g < 0 ? '−' : '') + Math.abs(g).toFixed(1) + 's';
+
+function batColor(b) {
+    return b >= 60 ? '#2dd4bf' : b >= 30 ? '#f59e0b' : '#ef4444';
+}
+
+function battery(b, fresh) {
+    if (b == null) {
+        return `<div class="bar none"><b>?</b></div>`;
+    }
+    return `<div class="bar${fresh ? ' fresh' : ''}"><i style="width:${b}%;background:${batColor(b)}"></i><b>${b}%</b></div>`;
+}
+
+function row(cls, r) {
+    return `<tr class="${cls}">` +
+        `<td class="gap${r.est ? ' est' : ''}">${r.gapText}</td>` +
+        `<td class="name">${escapeHTML(r.name)}</td>` +
+        `<td class="num">${r.wkg1 != null ? r.wkg1.toFixed(1) : "–"}</td>` +
+        `<td class="num">${fmt(r.draft)}</td>` +
+        `<td class="bat">${battery(r.battery, r.fresh)}</td></tr>`;
+}
+
+function escapeHTML(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
+
+function renderNearby(snap) {
+    const rows = [`<tr class="head"><td class="gap">Gap</td><td>Rider</td><td class="num">W/kg</td>` +
+                  `<td class="num">Draft</td><td class="bat">Battery</td></tr>`];
+    for (const r of snap.ahead) {
+        rows.push(row('ahead', {...r, name: r.name || `#${r.athleteId}`, gapText: fmtGap(r.gap)}));
+    }
+    rows.push(row('me', {name: 'You', gapText: '', draft: snap.draft, ...snap.me}));
+    for (const r of snap.behind) {
+        rows.push(row('behind', {...r, name: r.name || `#${r.athleteId}`, gapText: fmtGap(r.gap)}));
+    }
+    if (!snap.ahead.length && !snap.behind.length) {
+        rows.push(`<tr><td colspan="5" class="empty">Nobody within 60 s</td></tr>`);
+    }
+    $('nearby-body').innerHTML = rows.join('');
+    const g = snap.group;
+    $('grpbat').textContent = g?.avgBattery != null ? `${g.avgBattery}%` : '–';
+    // What the average covers: riders within 15 s, excluding faded ones (watched < 2 min).
+    $('grpcount').textContent = g?.count ? `· ${g.count} rider${g.count === 1 ? '' : 's'} within 15 s` : '· nobody within 15 s yet';
+    $('mybat').textContent = snap.me?.battery != null ? `${snap.me.battery}%` : '–';
+    $('attack').classList.toggle('hidden', !snap.attack);
+    $('attack').textContent = snap.attack ? `ATTACK? ${snap.attack.text}` : '';
+}
+
+const km = m => m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 50) * 50} m`;
+const pct = g => `${(g * 100).toFixed(1)}%`;
+
+function renderTerrain(t) {
+    if (!t) {
+        $('climbtext').textContent = 'No map data here';
+        $('routename').textContent = '';
+        $('profile').innerHTML = '';
+        return;
+    }
+    if (t.current) {
+        $('climbtext').innerHTML = `On climb <span class="sub">· ${km(t.current.toTop)} to top · ${pct(t.current.grade)}</span>`;
+    } else if (t.next) {
+        $('climbtext').innerHTML = `Climb in ${km(t.next.in)} <span class="sub">· ${km(t.next.length)} @ ${pct(t.next.grade)} · +${t.next.gain} m</span>`;
+    } else {
+        $('climbtext').innerHTML = `No climbs <span class="sub">in the next 5 km</span>`;
+    }
+    $('routename').textContent = t.source === 'route' ? (t.routeName || '') :
+        t.source === 'learned' ? 'new road · learned from other riders' : 'following current road';
+    const p = t.profile;
+    const W = 500, H = 56, total = 5000;
+    let lo = Math.min(...p), hi = Math.max(...p);
+    if (hi - lo < 25) {  // keep flat roads looking flat
+        const mid = (hi + lo) / 2;
+        lo = mid - 12.5;
+        hi = mid + 12.5;
+    }
+    const X = d => d / total * W;
+    const Y = e => H - 3 - (e - lo) / (hi - lo) * (H - 8);
+    const pts = p.map((e, i) => `${X(i * t.step).toFixed(1)},${Y(e).toFixed(1)}`);
+    const lastX = X((p.length - 1) * t.step).toFixed(1);
+    let svg = `<path class="area" d="M0,${H} L${pts.join(' L')} L${lastX},${H} Z"/>`;
+    for (const [a, b] of t.climbs) {
+        const i0 = Math.max(0, Math.round(a / t.step)), i1 = Math.min(p.length - 1, Math.round(b / t.step));
+        const seg = p.slice(i0, i1 + 1).map((e, k) => `${X((i0 + k) * t.step).toFixed(1)},${Y(e).toFixed(1)}`);
+        if (seg.length > 1) {
+            svg += `<path class="climb" d="M${X(i0 * t.step)},${H} L${seg.join(' L')} L${X(i1 * t.step)},${H} Z"/>`;
+        }
+    }
+    svg += `<polyline class="line" points="${pts.join(' ')}"/>`;
+    svg += `<line class="me" x1="1" x2="1" y1="0" y2="${H}"/>`;
+    $('profile').innerHTML = svg;
+}
+
+const statusText = {
+    'starting': ['Draftmeter', 'Starting…'],
+    'logging-in': ['Logging in', 'Signing in the monitor account…'],
+    'connecting': ['Connecting', 'Start riding in Zwift. Data appears a few seconds after you start pedalling.'],
+    'waiting-for-ride': ['Waiting for your ride', 'Your account isn\'t in a Zwift world yet.'],
+};
+
+function render(snap) {
+    live = snap.status === 'live';
+    $('status').classList.toggle('hidden', live);
+    if (!live) {
+        const [title, body] = snap.status === 'error' ?
+            ['Problem', snap.error || 'Unknown error'] :
+            (statusText[snap.status] || statusText.starting);
+        $('status').innerHTML = `<b>${escapeHTML(title)}</b>${escapeHTML(body)}`;
+        applySections();
+        return;
+    }
+    applySections();
+    target = snap.draft;
+    $('avgdraft').textContent = fmt(snap.ride.avgDraft);
+    $('draftkj').textContent = fmt(snap.ride.draftKj);
+    $('draftpct').textContent = snap.ride.draftPct + '%';
+    if (show.nearby) {
+        renderNearby(snap);
+    }
+    if (show.terrain) {
+        renderTerrain(snap.terrain);
+    }
+}
+
+if (window.draftmeter.platform !== 'darwin') {
+    $('hint').textContent = 'Drag to move · drag edges to resize · Ctrl+Shift+D to lock';
+}
+
+window.draftmeter.onConfig(cfg => {
+    document.body.classList.toggle('unlocked', !cfg.locked);
+    $('hint').classList.toggle('hidden', cfg.locked);
+    show = cfg.show;
+    if (cfg.gaugeMax !== gaugeMax) {
+        gaugeMax = cfg.gaugeMax;
+        buildGauge();
+    }
+    applySections();
+});
+window.draftmeter.onSnapshot(render);
+
+buildGauge();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

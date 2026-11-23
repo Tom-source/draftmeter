@@ -1,0 +1,268 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<title>Draftmeter setup</title>
+<style>
+    :root { --bg: #15171c; --card: #1e2128; --line: #2c313b; --text: #eef0f4; --muted: #98a1b0; --accent: #2dd4bf; --err: #f87171; --warn: #f59e0b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { padding: 20px 24px 24px; }
+    .dots { display: flex; gap: 6px; margin-bottom: 18px; }
+    .dots i { flex: 1; height: 4px; border-radius: 2px; background: var(--line); }
+    .dots i.on { background: var(--accent); }
+    h1 { font-size: 21px; margin: 0 0 6px; }
+    h2 { font-size: 14px; margin: 16px 0 6px; }
+    p { margin: 0 0 10px; }
+    .muted { color: var(--muted); }
+    .small { font-size: 12.5px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 10px 0; }
+    .card.warn { border-color: rgba(245,158,11,0.45); }
+    .card.warn b { color: var(--warn); }
+    ol, ul { margin: 6px 0 8px; padding-left: 20px; }
+    li { margin: 3px 0; }
+    label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 3px; }
+    input { width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line); background: #12141a; color: var(--text); font-size: 14px; }
+    input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+    button { margin-top: 12px; padding: 9px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #062a26; font-weight: 700; font-size: 14px; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    button.secondary { background: #2c313b; color: var(--text); }
+    .nav { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
+    .row { display: flex; gap: 8px; align-items: flex-end; }
+    .row input { flex: 1; }
+    .row button { margin-top: 0; }
+    .msg { font-size: 12.5px; margin-top: 8px; min-height: 1.2em; }
+    .msg.err { color: var(--err); }
+    .msg.ok { color: var(--accent); }
+    #results { list-style: none; padding: 0; margin: 8px 0 0; max-height: 190px; overflow: auto; }
+    #results li { display: flex; gap: 10px; align-items: center; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+    #results li:hover, #results li.sel { background: #2a2f39; }
+    #results img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: #333; }
+    #results .id { color: var(--muted); font-size: 12px; margin-left: auto; }
+    a { color: var(--accent); }
+    kbd { background: #2c313b; border-radius: 4px; padding: 1px 5px; font: 12px ui-monospace, Menlo, Consolas, monospace; }
+    .step { display: none; }
+    .step.on { display: block; }
+</style>
+</head>
+<body>
+<main>
+    <div class="dots"><i></i><i></i><i></i><i></i></div>
+
+    <!-- 1. Welcome -->
+    <section class="step" data-step="0">
+        <h1>Welcome to Draftmeter</h1>
+        <p class="muted">A small overlay for Zwift that shows what the game doesn't:</p>
+        <ul>
+            <li><b>Draft gauge:</b> how many watts you're saving in the slipstream, live.</li>
+            <li><b>Average draft:</b> how well you sat in for the whole ride.</li>
+            <li><b>Gaps:</b> riders around you, seconds ahead and behind.</li>
+            <li><b>Climb ahead:</b> the next climb, its length and steepness.</li>
+            <li><b>Rivals' battery:</b> an estimate of how much each rider near you has left.</li>
+        </ul>
+        <h2>How it works</h2>
+        <p class="small muted">Zwift already calculates all of this. Draftmeter signs in a <b>second, free Zwift
+            account</b> that simply spectates you (like watching a friend in Zwift) and shows the numbers it
+            receives. It works whatever you ride Zwift on (computer, Apple TV, iPad, phone), as long as this
+            computer is online. Your normal Zwift password is never asked for.</p>
+        <div class="card warn small">
+            <b>Be aware:</b> Draftmeter is a hobby project, not made by or affiliated with Zwift. It uses
+            Zwift's unofficial spectator connection, which Zwift's terms don't officially allow. Your own account is never logged in by Draftmeter; the
+            second account is what connects. Use it at your own risk.
+        </div>
+        <div class="nav"><span></span><button data-next>Get started</button></div>
+    </section>
+
+    <!-- 2. Monitor account -->
+    <section class="step" data-step="1">
+        <h1>1 · Create a second Zwift account</h1>
+        <p class="muted small">This "monitor" account only watches you. It must be different from the account you ride with.</p>
+        <div class="card small">
+            <ol>
+                <li>Open <a href="https://www.zwift.com/sign-up" target="_blank">zwift.com/sign-up</a> (opens your browser).</li>
+                <li>Use a <b>different email</b>. Tip: a Gmail alias works, e.g. <i>yourname+zwiftmon@gmail.com</i>
+                    (mail still arrives in your normal inbox).</li>
+                <li>Only fill in the first form (name, email, password). You can close the page after that.
+                    No subscription, trial or payment is needed; ignore those screens.</li>
+            </ol>
+        </div>
+        <h2>Then log in with it here</h2>
+        <label for="user">Second account email</label>
+        <input id="user" type="email" autocomplete="off" spellcheck="false">
+        <label for="pass">Second account password</label>
+        <input id="pass" type="password" autocomplete="off">
+        <div class="msg" id="loginmsg"></div>
+        <div class="nav"><button class="secondary" data-back>Back</button><button id="login">Log in</button></div>
+    </section>
+
+    <!-- 3. Find yourself -->
+    <section class="step" data-step="2">
+        <h1>2 · Who do you ride as?</h1>
+        <p class="muted small">Search for the name of <b>your normal Zwift account</b> and click yourself.</p>
+        <div class="row">
+            <input id="q" placeholder="Your name as shown in Zwift">
+            <button id="search" class="secondary">Search</button>
+        </div>
+        <ul id="results"></ul>
+        <details class="small muted" style="margin-top:8px">
+            <summary>Can't find yourself?</summary>
+            <p style="margin-top:6px">Try only your last name, or paste your <b>athlete ID</b> below. You can find it on
+                <a href="https://zwiftpower.com" target="_blank">ZwiftPower</a>: open your profile, and the number after
+                <i>z=</i> in the address bar is your ID (e.g. <i>profile.php?z=<b>1234567</b></i>).</p>
+        </details>
+        <label for="aid">Athlete ID</label>
+        <input id="aid" inputmode="numeric">
+        <div class="msg" id="savemsg"></div>
+        <div class="nav"><button class="secondary" data-back>Back</button><button id="save">Save &amp; finish</button></div>
+    </section>
+
+    <!-- 4. Done -->
+    <section class="step" data-step="3">
+        <h1>You're set 🎉</h1>
+        <ol>
+            <li><b>Start riding in Zwift.</b> The overlay goes live a few seconds after you start pedalling
+                (the first time it can take up to a minute while it connects).</li>
+            <li><b>Place the overlay:</b> drag it where you want it and resize it from the edges, then press
+                <kbd id="lockkey">⌘⇧D</kbd> to lock it, so clicks go through to Zwift.</li>
+            <li>Draftmeter has a <b id="dockwhere">Dock icon</b> (right-click it to quit) and a gauge icon in the
+                <b id="traywhere">menu bar</b> with all options: panels, settings, quit.</li>
+        </ol>
+        <p class="small muted">Tip: if Zwift is full screen and the overlay hides behind it, switch Zwift to a
+            windowed or borderless window.</p>
+        <div class="nav"><button class="secondary" id="helpbtn">How to read the numbers</button><button id="close">Close</button></div>
+    </section>
+</main>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const api = window.draftmeter.setup;
+const isMac = window.draftmeter.platform === 'darwin';
+let pickedName = null;
+let step = 0;
+
+if (!isMac) {
+    $('lockkey').textContent = 'Ctrl+Shift+D';
+    $('traywhere').textContent = 'system tray (bottom right, maybe under the ^ arrow)';
+    $('dockwhere').textContent = 'taskbar button';
+}
+
+function show(n) {
+    step = n;
+    document.querySelectorAll('.step').forEach(el => el.classList.toggle('on', +el.dataset.step === n));
+    document.querySelectorAll('.dots i').forEach((el, i) => el.classList.toggle('on', i <= n));
+    const focus = {1: 'user', 2: 'q'}[n];
+    if (focus) {
+        setTimeout(() => $(focus).focus(), 0);
+    }
+}
+document.querySelectorAll('[data-next]').forEach(b => b.onclick = () => show(step + 1));
+document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => show(step - 1));
+
+function msg(el, text, kind) {
+    el.textContent = text;
+    el.className = 'msg ' + (kind || '');
+}
+
+async function init() {
+    const cfg = await api.get();
+    if (cfg.monitorUsername) {
+        $('user').value = cfg.monitorUsername;
+    }
+    if (cfg.hasPassword) {
+        $('pass').placeholder = '(saved; leave empty to reuse)';
+    }
+    if (cfg.athleteId) {
+        $('aid').value = cfg.athleteId;
+        pickedName = cfg.athleteName;
+    }
+    // Returning users (Settings…) skip the welcome page.
+    show(cfg.monitorUsername ? 1 : 0);
+}
+
+async function doLogin() {
+    msg($('loginmsg'), 'Logging in…');
+    $('login').disabled = true;
+    const r = await api.login($('user').value.trim(), $('pass').value);
+    $('login').disabled = false;
+    if (!r.ok) {
+        msg($('loginmsg'), r.error, 'err');
+        return;
+    }
+    msg($('loginmsg'), `Logged in as ${r.name}.`, 'ok');
+    setTimeout(() => show(2), 500);
+}
+$('login').onclick = doLogin;
+// Note: an on* handler that returns false cancels the key, so never return the && result.
+$('pass').addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') {
+        doLogin();
+    }
+});
+
+async function doSearch() {
+    const q = $('q').value.trim();
+    if (!q) {
+        return;
+    }
+    $('results').innerHTML = '<li>Searching…</li>';
+    const r = await api.search(q);
+    $('results').innerHTML = '';
+    if (!r.ok) {
+        msg($('savemsg'), r.error, 'err');
+        return;
+    }
+    if (!r.results.length) {
+        $('results').innerHTML = '<li>No matches. Try your last name only.</li>';
+    }
+    for (const x of r.results) {
+        const li = document.createElement('li');
+        const img = document.createElement('img');
+        if (x.avatar && x.avatar.startsWith('https://')) {
+            img.src = x.avatar;
+        }
+        const name = document.createElement('span');
+        name.textContent = `${x.name} ${x.country ? '· ' + x.country.toUpperCase() : ''}`;
+        const id = document.createElement('span');
+        id.className = 'id';
+        id.textContent = x.id;
+        li.append(img, name, id);
+        li.onclick = () => {
+            for (const el of $('results').children) {
+                el.classList.remove('sel');
+            }
+            li.classList.add('sel');
+            $('aid').value = x.id;
+            pickedName = x.name;
+        };
+        $('results').append(li);
+    }
+}
+$('search').onclick = doSearch;
+$('q').addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') {
+        doSearch();
+    }
+});
+$('aid').oninput = () => pickedName = null;
+
+$('save').onclick = async () => {
+    const id = Number($('aid').value.trim());
+    if (!id) {
+        msg($('savemsg'), 'Pick yourself from the list or enter your athlete ID.', 'err');
+        return;
+    }
+    const r = await api.save(id, pickedName);
+    if (!r.ok) {
+        msg($('savemsg'), r.error, 'err');
+        return;
+    }
+    show(3);
+};
+$('helpbtn').onclick = () => api.help();
+$('close').onclick = () => window.close();
+
+init();
+</script>
+</body>
+</html>

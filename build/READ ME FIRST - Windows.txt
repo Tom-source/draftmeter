@@ -1,0 +1,23 @@
+DRAFTMETER for Windows: install in 1 minute
+===========================================
+
+1. Double-click "Draftmeter-Setup.exe".
+
+2. Windows will warn "Windows protected your PC", because Draftmeter is a free
+   hobby app without a paid code-signing certificate:
+     - Click "More info", then "Run anyway".
+   It installs and starts by itself.
+
+3. Draftmeter lives in the SYSTEM TRAY (bottom right, maybe hidden under the
+   ^ arrow; a small gauge icon). Quit it there: right-click > Quit.
+   A setup window walks you through:
+     - creating a second, free Zwift account (takes 2 minutes)
+     - finding yourself
+   Your normal Zwift password is never asked for.
+
+4. Ride in Zwift. The overlay fills in a few seconds after you start pedalling.
+   Put Zwift in windowed or borderless mode if the overlay hides behind it.
+   Ctrl+Shift+D locks/unlocks the overlay, Ctrl+Shift+H hides it.
+
+Note: Draftmeter is not made by or affiliated with Zwift. It uses Zwift's
+unofficial spectator connection. Use at your own risk.

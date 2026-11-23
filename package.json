@@ -1,0 +1,110 @@
+{
+  "name": "draftmeter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Draft gauge, gaps, climb-ahead and rival fatigue overlay for Zwift",
+  "type": "module",
+  "main": "src/main.mjs",
+  "license": "GPL-3.0-only",
+  "scripts": {
+    "start": "electron .",
+    "cli": "node src/cli.mjs",
+    "demo": "electron . --demo",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist": "electron-builder --mac --win",
+    "icons": "electron scripts/make-icons.mjs"
+  },
+  "dependencies": {
+    "protobufjs": "^7.5.8"
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  },
+  "productName": "Draftmeter",
+  "author": "Draftmeter",
+  "build": {
+    "appId": "app.draftmeter.overlay",
+    "productName": "Draftmeter",
+    "copyright": "GPL-3.0. Includes third-party GPL-3.0 code, see src/zwift/NOTICE.md.",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "ui/**/*",
+      "package.json",
+      "LICENSE",
+      "README.md"
+    ],
+    "afterPack": "build/adhoc-sign.cjs",
+    "mac": {
+      "category": "public.app-category.sports",
+      "icon": "build/icon.png",
+      "identity": null,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    },
+    "dmg": {
+      "title": "Draftmeter",
+      "artifactName": "Draftmeter-Mac-${arch}.dmg",
+      "contents": [
+        {
+          "x": 140,
+          "y": 170,
+          "type": "file"
+        },
+        {
+          "x": 400,
+          "y": 170,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 270,
+          "y": 330,
+          "type": "file",
+          "path": "build/READ ME FIRST.txt"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 440
+      },
+      "format": "UDBZ"
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "Draftmeter-Windows-Setup.exe",
+      "runAfterFinish": true
+    },
+    "electronLanguages": [
+      "en",
+      "en-GB",
+      "nl"
+    ],
+    "compression": "maximum"
+  }
+}

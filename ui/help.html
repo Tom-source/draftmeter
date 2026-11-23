@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+<title>How to use Draftmeter</title>
+<style>
+    :root { --bg: #15171c; --card: #1e2128; --line: #2c313b; --text: #eef0f4; --muted: #98a1b0; --accent: #2dd4bf; --warn: #f59e0b; --red: #ef4444; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { padding: 22px 26px 30px; max-width: 640px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 15px; margin: 22px 0 6px; }
+    p { margin: 0 0 8px; }
+    .muted { color: var(--muted); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 8px 0; }
+    .card > :last-child { margin-bottom: 0; }
+    ul { margin: 4px 0 8px; padding-left: 20px; }
+    li { margin: 3px 0; }
+    kbd { background: #2c313b; border-radius: 4px; padding: 1px 5px; font: 12px ui-monospace, Menlo, Consolas, monospace; }
+    table { border-collapse: collapse; width: 100%; }
+    td { padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    td:first-child { white-space: nowrap; }
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+    a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+    <h1>How to use Draftmeter</h1>
+    <p class="muted">Start Draftmeter, then ride in Zwift. The overlay fills in a few seconds after you start pedalling.</p>
+
+    <h2>Shortcuts</h2>
+    <table>
+        <tr><td><kbd>⌘⇧D</kbd> · <kbd>Ctrl+Shift+D</kbd></td><td>Lock / unlock the overlay. Unlocked (dashed border): drag and resize it. Locked: clicks go through to Zwift.</td></tr>
+        <tr><td><kbd>⌘⇧H</kbd> · <kbd>Ctrl+Shift+H</kbd></td><td>Hide / show the overlay.</td></tr>
+        <tr><td><kbd>⌘Q</kbd></td><td>Quit Draftmeter (Mac). Or right-click its Dock icon → Quit. On Windows: right-click the tray icon → Quit, or close the overlay from the taskbar.</td></tr>
+    </table>
+    <p class="muted" style="margin-top:6px">Draftmeter has a Dock icon (Mac) or a taskbar button (Windows). Everything else is in the Draftmeter
+        menu: the gauge icon in the menu bar on Mac (it shows your live draft), the system tray on Windows. From there you can show or hide each panel, reset ride stats, open settings, or quit.</p>
+
+    <h2>The panels</h2>
+    <div class="card">
+        <p><b>Draft gauge:</b> watts you're saving right now by sitting in someone's slipstream, as calculated by Zwift.
+            Expect 50–150 W or more in a fast bunch on the flat, and single digits on a climb (drafting barely helps at low speed).</p>
+    </div>
+    <div class="card">
+        <p><b>Avg draft W · kJ saved · In draft:</b> since you started Draftmeter (or pressed <i>Reset ride stats</i>).
+            "In draft" is the share of your moving time with at least 10 W of draft.</p>
+    </div>
+    <div class="card">
+        <p><b>Climb ahead:</b> the elevation of the next 5 km. Climbs are shown in orange, for example
+            <i>Climb in 1.2 km · 1.5 km @ 4.5% · +68 m</i>. On a Zwift route it follows the route; otherwise it follows
+            the road you're on. Brand-new roads are learned from other riders, so the panel may be empty the first time you ride one.</p>
+    </div>
+    <div class="card">
+        <p><b>Nearby riders:</b> riders within 60 s. <span style="color:#93c5fd">Blue −2.1s</span> = ahead of you,
+            <span style="color:#fca5a5">red +1.4s</span> = behind. In a race, only your own category is shown.</p>
+        <ul>
+            <li><b>W/kg:</b> their average over the last minute. Who's on the limit right now?</li>
+            <li><b>Draft:</b> what they're saving. A rider at 0 W is pulling or alone in the wind.</li>
+            <li><b>Battery:</b> an estimate of how much "attack energy" (W′, the reserve above FTP) they have left, from their live power and their Zwift FTP.
+                <span class="dot" style="background:var(--accent)"></span>60%+ fresh
+                <span class="dot" style="background:var(--warn)"></span>30–60%
+                <span class="dot" style="background:var(--red)"></span>below 30%: close to empty.
+                A faded bar means we've watched them for under 2 minutes; <i>?</i> means no FTP in their profile.</li>
+        </ul>
+    </div>
+    <div class="card">
+        <p><b>Group battery:</b> the average battery of the riders within 15 s of you (ahead and behind), shown with how many
+            riders that is. Riders with a faded bar don't count yet, because we haven't watched them long enough. In a big bunch it
+            can include riders that don't fit in the list.</p>
+        <p><b>ATTACK? banner:</b> shows when you have clearly more left than the group (you ≥ 55% and 15+ points above their average)
+            <i>and</i> a climb starts within 1 km, or the group is nearly empty. It's a nudge, not an order. The battery is a model:
+            Zwift FTPs can be outdated or set low on purpose.</p>
+    </div>
+
+    <h2>Something not working?</h2>
+    <ul>
+        <li><b>Stuck on "Connecting":</b> make sure you're actually riding in Zwift. The first connection can take up to a minute; Draftmeter repairs the connection itself.</li>
+        <li><b>"Wrong email or password":</b> that's about the <i>second</i> account. Open <i>Settings…</i> in the menu and log in again.</li>
+        <li><b>Overlay hidden behind Zwift:</b> switch Zwift to windowed or borderless full screen.</li>
+        <li><b>Don't run Draftmeter on two computers at once</b> with the same second account, and don't use that account in another Zwift tool at the same time: Zwift allows only one connection per account.</li>
+        <li>Still stuck? Menu → <i>Show logs &amp; ride recordings</i> and send the <i>draftmeter.log</i> file to whoever gave you the app.</li>
+    </ul>
+
+    <h2>About</h2>
+    <p class="muted">Draftmeter is a free hobby project, not affiliated with or endorsed by Zwift. It uses Zwift's unofficial spectator
+        connection with a second account; your own account is never logged in by it. Use at your own risk. Draftmeter is open source under the GNU GPL v3 and includes third-party GPL v3 code; its source code is included in the app.</p>
+</main>
+</body>
+</html>
