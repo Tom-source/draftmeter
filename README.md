@@ -199,14 +199,43 @@ Zwift game (your account) ──► Zwift servers ──► relay stream ──�
 
 - **Gaps:** time-based. When did the rider ahead pass the point where you are now? In events it uses
   Zwift's event distance; otherwise road position.
-- **Climb ahead:** places you on your route using Zwift's road geometry (Catmull-Rom splines per
-  road) and the route manifests. Roads missing from the bundled data are learned from other riders'
-  positions and saved locally.
+- **Climb ahead:** see [How Draftmeter knows which climbs are coming](#how-draftmeter-knows-which-climbs-are-coming).
 - **Battery:** Skiba's W′ balance (differential model) per rider: CP = profile FTP, W′ = 20 kJ.
 - **Self-repair:** if your own state stops arriving on the live UDP stream, Draftmeter resets the
   channel and reconnects if needed.
 - **Recordings:** each ride is saved as gzip JSON lines (~3–10 MB per hour, last 10 kept) in the
   app's data folder (menu → *Show logs & ride recordings*), together with `draftmeter.log`.
+
+### How Draftmeter knows which climbs are coming
+
+The live stream says *where* you are, but not what the road ahead looks like. That comes from map data
+that ships with Draftmeter in [`src/zwift/data/`](src/zwift/data) (about 2 MB):
+
+| File | What's in it |
+|---|---|
+| `worlds/<id>/roads.json` | Every road in that Zwift world as a line of 3D points (x, y and **height**), drawn as a smooth spline |
+| `routes.json` | All 352 Zwift routes: the sequence of roads each route rides, e.g. "road 81 forward from 45% to 58%, then road 149 in reverse…", plus lead-in and lap info |
+| `worldlist.json` | Per world: how to convert the height values to metres |
+
+How it's used, several times a second:
+
+1. **Where are you?** Each rider state in the stream includes the **route**, the **road**, how far along
+   that road you are, and the route **checkpoint**.
+2. **Find your spot on the route** with those values.
+3. **Look 5 km ahead:** follow the route road by road from your position (including laps) and read the
+   height every 25 m from the road geometry.
+4. **Detect climbs:** any stretch of at least 300 m that averages 2.5% or more and gains at least
+   12 m counts as a climb. That gives *"Climb in 1.2 km · 1.5 km @ 4.5% · +68 m"* and the profile chart.
+
+Checked against a real ride: from the rider's position, the predicted height 400 m ahead was within
+**0.4 m** of where they actually rode.
+
+**New roads:** Zwift keeps adding roads, and the bundled data doesn't have the newest ones (for
+example a newer area in the south of Watopia). For those roads Draftmeter learns the shape from the
+positions other riders report in the stream, and saves it on your computer (`learned-roads.json` in
+the app's data folder). Coverage grows with every ride. On a brand-new road nobody has ridden while
+you were connected, the climb panel stays empty. Without a route (free ride), Draftmeter follows the
+road you're on.
 
 ### Project layout
 
