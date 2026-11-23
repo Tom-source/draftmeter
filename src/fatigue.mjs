@@ -55,7 +55,7 @@ export class Fatigue {
         }
         this.lastWT = wt;
         const s = this.samples;
-        s.push({wt, p, d: state.draft || 0, v: state.speed || 0, dt});
+        s.push({wt, p, d: state.draft || 0, v: state.speed || 0, hr: state.heartrate || 0, dt});
         const cutoff = wt - WINDOW_MS;
         let drop = 0;
         while (drop < s.length && s[drop].wt < cutoff) {
@@ -83,6 +83,43 @@ export class Fatigue {
         return time >= Math.min(20, windowMs / 1000 / 3) ? sum / time : null;
     }
 
+    // Time-weighted average of fn over samples between `fromMs` and `toMs` ago (only where ok(x)).
+    _avgRange(fromMs, toMs, fn, ok = () => true) {
+        const s = this.samples;
+        if (!s.length) {
+            return null;
+        }
+        const end = s.at(-1).wt;
+        let sum = 0;
+        let time = 0;
+        for (let i = s.length - 1; i >= 0; i--) {
+            const age = end - s[i].wt;
+            if (age > fromMs) {
+                break;
+            }
+            if (age >= toMs && s[i].dt && ok(s[i])) {
+                sum += fn(s[i]) * s[i].dt;
+                time += s[i].dt;
+            }
+        }
+        return time >= 20 ? sum / time : null;
+    }
+
+    // Heart-rate drift: HR rising over the last minute while power stays flat or drops is a classic
+    // sign of a rider cracking. Works without knowing their max HR (it's the trend, not the number).
+    _hrDrift() {
+        const hasHr = x => x.hr > 0;
+        const hrNow = this._avgRange(60000, 0, x => x.hr, hasHr);
+        const hrBefore = this._avgRange(120000, 60000, x => x.hr, hasHr);
+        const pNow = this._avgRange(60000, 0, x => x.p);
+        const pBefore = this._avgRange(120000, 60000, x => x.p);
+        if (hrNow == null || hrBefore == null || pNow == null || !pBefore) {
+            return {hrRise: null, cracking: false};
+        }
+        const hrRise = Math.round(hrNow - hrBefore);
+        return {hrRise, cracking: hrRise >= 5 && pNow / pBefore <= 1.03};
+    }
+
     summary(weight) {
         const battery = this.cp && this.wbal != null ?
             Math.max(0, Math.min(100, Math.round(this.wbal / this.wPrime * 100))) : null;
@@ -97,6 +134,8 @@ export class Fatigue {
             ftpPct1: p1 != null && this.cp ? Math.round(p1 / this.cp * 100) : null,
             pull: pull != null ? Math.round(pull * 100) : null,
             cp: this.cp,
+            hr: this.samples.at(-1)?.hr || null,
+            ...this._hrDrift(),
         };
     }
 }

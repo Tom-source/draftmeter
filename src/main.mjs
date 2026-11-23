@@ -180,7 +180,7 @@ function stopEngine() {
 
 function createOverlay() {
     const area = screen.getPrimaryDisplay().workArea;
-    const b = config.overlayBounds || {width: 330, height: 760, x: area.x + area.width - 320, y: area.y + 60};
+    const b = config.overlayBounds || {width: 360, height: 760, x: area.x + area.width - 320, y: area.y + 60};
     overlay = new BrowserWindow({
         ...b,
         show: false,  // shown with showInactive() below: never steal the keyboard from setup/Zwift

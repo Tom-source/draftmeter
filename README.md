@@ -101,6 +101,8 @@ If the overlay hides behind a full-screen Zwift, switch Zwift to a windowed or b
   their live power and the FTP in their Zwift profile.
   🟢 60%+ fresh · 🟠 30–60% · 🔴 below 30% close to empty. A faded bar means we've watched them
   for under 2 minutes; `?` means their profile has no FTP.
+- **HR ♥:** each rider's current heart rate, if they have a monitor paired. **Red with ↑** means their HR rose
+  over the last minute while their power stayed flat or dropped: a classic sign they're cracking.
 - **Group battery:** the average of the riders within 15 s of you (the count is shown next to it).
   Faded riders don't count yet, and in a big bunch it includes riders that don't fit in the list.
 - **Tactics banner** (based on Zwift Insider's draft tests and Zwift's race guide; following a wheel saves

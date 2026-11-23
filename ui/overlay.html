@@ -85,11 +85,16 @@
 
     /* Nearby */
     #nearby { padding: 6px 4px; flex: 0 1 auto; overflow: hidden; }
-    #nearby table { width: 100%; border-collapse: collapse; }
-    #nearby td { padding: 3px 6px; white-space: nowrap; }
-    #nearby td.gap { width: 52px; text-align: right; font-weight: 600; }
-    #nearby td.name { overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
-    #nearby td.num { text-align: right; color: var(--muted); width: 44px; }
+    #nearby table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    #nearby td { padding: 3px 4px; white-space: nowrap; }
+    #nearby td.gap { width: 44px; text-align: right; font-weight: 600; }
+    #nearby td.hrc { width: 52px; }
+    #nearby td.name { overflow: hidden; text-overflow: ellipsis; }
+    .hr { display: inline-block; min-width: 26px; padding: 0 3px; border-radius: 4px;
+          font-size: 10px; line-height: 14px; text-align: center; font-weight: 700; vertical-align: 1px;
+          background: rgba(255,255,255,0.10); color: #fca5a5; }
+    .hr.cracking { background: #ef4444; color: #fff; }
+    #nearby td.num { text-align: right; color: var(--muted); width: 42px; }
     #nearby tr.ahead td.gap { color: var(--ahead); }
     #nearby tr.behind td.gap { color: var(--behind); }
     #nearby tr.me td { background: rgba(255,255,255,0.08); font-weight: 700; }
@@ -98,7 +103,7 @@
     #nearby .est { opacity: 0.6; }
     #nearby .empty { color: var(--muted); text-align: center; padding: 6px; }
     #nearby .head td { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-    #nearby td.bat { width: 58px; padding-right: 8px; }
+    #nearby td.bat { width: 54px; padding-right: 6px; }
     .bar { position: relative; height: 14px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
     .bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
     .bar > b { position: absolute; inset: 0; font-size: 10px; line-height: 14px; text-align: center; font-weight: 700; color: #fff; text-shadow: 0 0 3px #000; }
@@ -253,10 +258,20 @@ function battery(b, fresh) {
     return `<div class="bar${fresh ? ' fresh' : ''}"><i style="width:${b}%;background:${batColor(b)}"></i><b>${b}%</b></div>`;
 }
 
+// Small heart-rate box next to the name. Red with ↑ when their HR climbs while their power doesn't (cracking).
+function hrBadge(r) {
+    if (!r.hr) {
+        return '';
+    }
+    const up = r.cracking ? ` ↑${r.hrRise}` : '';
+    return `<span class="hr${r.cracking ? ' cracking' : ''}">♥${r.hr}${up}</span>`;
+}
+
 function row(cls, r) {
     return `<tr class="${cls}">` +
         `<td class="gap${r.est ? ' est' : ''}">${r.gapText}</td>` +
         `<td class="name">${escapeHTML(r.name)}</td>` +
+        `<td class="hrc">${hrBadge(r)}</td>` +
         `<td class="num">${r.wkg1 != null ? r.wkg1.toFixed(1) : "–"}</td>` +
         `<td class="num">${fmt(r.draft)}</td>` +
         `<td class="bat">${battery(r.battery, r.fresh)}</td></tr>`;
@@ -267,17 +282,17 @@ function escapeHTML(s) {
 }
 
 function renderNearby(snap) {
-    const rows = [`<tr class="head"><td class="gap">Gap</td><td>Rider</td><td class="num">W/kg</td>` +
+    const rows = [`<tr class="head"><td class="gap">Gap</td><td>Rider</td><td class="hrc">HR</td><td class="num">W/kg</td>` +
                   `<td class="num">Draft</td><td class="bat">Battery</td></tr>`];
     for (const r of snap.ahead) {
         rows.push(row('ahead', {...r, name: r.name || `#${r.athleteId}`, gapText: fmtGap(r.gap)}));
     }
-    rows.push(row('me', {name: 'You', gapText: '', draft: snap.draft, ...snap.me}));
+    rows.push(row('me', {name: 'You', gapText: '', draft: snap.draft, ...snap.me, hr: snap.heartrate || snap.me?.hr}));
     for (const r of snap.behind) {
         rows.push(row('behind', {...r, name: r.name || `#${r.athleteId}`, gapText: fmtGap(r.gap)}));
     }
     if (!snap.ahead.length && !snap.behind.length) {
-        rows.push(`<tr><td colspan="5" class="empty">Nobody within 60 s</td></tr>`);
+        rows.push(`<tr><td colspan="6" class="empty">Nobody within 60 s</td></tr>`);
     }
     $('nearby-body').innerHTML = rows.join('');
     const g = snap.group;

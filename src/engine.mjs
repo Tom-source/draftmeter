@@ -539,6 +539,8 @@ export class Engine extends Events.EventEmitter {
                 draft: track.state.draft || 0,
                 speed: Math.round(track.state.speed),
                 hr: track.state.heartrate || null,
+                hrRise: f.hrRise,
+                cracking: f.cracking,
                 battery: f.battery,
                 fresh: f.fresh,
                 wkg1: f.wkg1,

@@ -82,6 +82,10 @@ export class DemoEngine extends Events.EventEmitter {
                 battery: bat(i, sign),
                 fresh: i === 3,
                 wkg1: Math.round((3.2 + Math.sin(t / 4 + i) * 0.6) * 10) / 10,
+                // One rider without a HR monitor, one cracking (HR climbing while power holds).
+                hr: i === 2 && sign > 0 ? null : Math.round(150 + i * 4 + Math.sin(t / 6 + i) * 5),
+                hrRise: i === 1 && sign < 0 ? 9 : 1,
+                cracking: i === 1 && sign < 0,
             };
         };
         const ahead = [rider(3, -1), rider(2, -1), rider(1, -1)];
