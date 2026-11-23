@@ -13,7 +13,7 @@ Draftmeter is a small, free overlay that floats on top of Zwift, on a Mac or a W
 | ⏱️ **Gaps** | Riders within 60 s, ahead and behind. In races, only your own category |
 | ⛰️ **Climb ahead** | Elevation of the next 5 km: *Climb in 1.2 km · 1.5 km @ 4.5% · +68 m* |
 | 🔋 **Rivals' battery** | An estimate of how much "attack energy" each rider near you has left |
-| ⚡ **Attack hint** | A nudge when you're clearly fresher than the group and a climb is coming |
+| ⚡ **When to attack** | Move up before a climb, attack on the steep part, keep going over the top |
 
 > **Not made by or affiliated with Zwift.** See [Is this allowed?](#is-this-allowed) before you use it.
 
@@ -103,8 +103,20 @@ If the overlay hides behind a full-screen Zwift, switch Zwift to a windowed or b
   for under 2 minutes; `?` means their profile has no FTP.
 - **Group battery:** the average of the riders within 15 s of you (the count is shown next to it).
   Faded riders don't count yet, and in a big bunch it includes riders that don't fit in the list.
-- **ATTACK?** appears when you're at 55% or more, at least 15 points above the group's average, and
-  a climb starts within 1 km (or the group is nearly empty). It's a nudge, not an order.
+- **Tactics banner** (based on Zwift Insider's draft tests and Zwift's race guide; following a wheel saves
+  ~25% on the flat but only ~2–12% on a climb, so attacks stick on steep climbs, not on the run-in):
+  - 🔵 **Before a climb:** *move up, sit in*. Start near the front; don't attack on the flat.
+  - 🔴 **ATTACK:** only on a steep part (about 6%+), when you're clearly fresher than the group (≥ 55% and
+    15+ points above them, or they're below 35%) and have enough battery to ride hard to the top.
+    Short climbs (≤ ~1 km): the last ~500 m, full gas to the top. Long climbs: the final part (last 40%,
+    at most 1.5 km).
+  - 🔴 **Keep the power on over the top:** don't ease off at the crest; hold it into the descent.
+  - 🔵 **Wait:** too early on a long climb, too shallow to drop anyone, or not enough battery yet.
+  - Sources: [draft savings on climbs vs flats](https://zwiftinsider.com/draft-savings/),
+    [Zwift's Nov 2025 drafting update](https://zwiftinsider.com/drafting-update/),
+    [Zwift: hilly race tactics](https://www.zwift.com/news/27667-zwift-race-types-hilly-races),
+    [timing your attacks](https://zwiftinsider.com/timing-your-attacks),
+    [attacking punchy climbs](https://zwiftinsider.com/attacking-punchy-climbs-skillz-and-drillz/).
 
 **It's a model, not mind-reading.** Zwift profile FTPs can be outdated or set low on purpose, and
 everyone is assumed to have the same reserve. Use it to spot who has been suffering.

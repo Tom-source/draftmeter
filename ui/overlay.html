@@ -112,6 +112,9 @@
         animation: pulse 1.6s ease-in-out infinite;
     }
     @keyframes pulse { 50% { filter: brightness(1.25); } }
+    #attack.prepare, #attack.wait {
+        background: rgba(59,130,246,0.85); animation: none; font-weight: 600;
+    }
 
     /* Terrain */
     #terrain { padding: 8px 10px 6px; }
@@ -282,8 +285,9 @@ function renderNearby(snap) {
     // What the average covers: riders within 15 s, excluding faded ones (watched < 2 min).
     $('grpcount').textContent = g?.count ? `· ${g.count} rider${g.count === 1 ? '' : 's'} within 15 s` : '· nobody within 15 s yet';
     $('mybat').textContent = snap.me?.battery != null ? `${snap.me.battery}%` : '–';
-    $('attack').classList.toggle('hidden', !snap.attack);
-    $('attack').textContent = snap.attack ? `ATTACK? ${snap.attack.text}` : '';
+    const a = snap.attack;
+    $('attack').className = a ? a.kind : 'hidden';
+    $('attack').textContent = a ? a.text : '';
 }
 
 const km = m => m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 50) * 50} m`;

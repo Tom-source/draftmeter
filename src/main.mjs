@@ -681,7 +681,7 @@ app.whenReady().then(() => {
                 FS.writeFileSync(out.replace(/\.png$/, '-help.png'), (await helpWin.webContents.capturePage()).toPNG());
             }
             app.quit();
-        }, 6000);
+        }, Number(Process.env.DRAFTMETER_CAPTURE_DELAY || 6000));
     }
 });
 

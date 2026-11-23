@@ -1,6 +1,6 @@
 {
   "name": "draftmeter",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Draft gauge, gaps, climb-ahead and rival fatigue overlay for Zwift",
   "type": "module",

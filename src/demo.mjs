@@ -1,6 +1,7 @@
 // Fake data source so the overlay can be tried without riding in Zwift (`npm run demo`).
 import Events from 'node:events';
-import {groupSummary, attackHint} from './engine.mjs';
+import {groupSummary} from './engine.mjs';
+import {Tactics} from './tactics.mjs';
 
 const names = ['J. Vos', 'L. Peeters', 'M. Janssens', 'S. de Vries', 'A. Maes', 'K. Claes', 'T. Smit'];
 
@@ -14,6 +15,7 @@ export class DemoEngine extends Events.EventEmitter {
         this.powerSum = 0;
         this.maxDraft = 0;
         this.status = 'live';
+        this.tactics = new Tactics();
     }
 
     async start() {
@@ -29,21 +31,22 @@ export class DemoEngine extends Events.EventEmitter {
     }
 
     _terrain(t) {
-        const step = 25;
+        // A punchy 900 m climb at 6.5% that comes around every ~4.5 minutes.
+        const step = 25, start0 = 650, len = 900, grade = 0.065, top = start0 + len;
         const off = (t * 11) % 3000;  // creep forward at ~40 km/h
         const elev = d => {
             const x = d + off;
-            const climb = x > 650 && x < 2150 ? (x - 650) * 0.045 : x >= 2150 ? 67.5 - Math.min(67.5, (x - 2150) * 0.03) : 0;
+            const climb = x > start0 && x < top ? (x - start0) * grade : x >= top ? len * grade - Math.min(len * grade, (x - top) * 0.03) : 0;
             return 20 + climb + Math.sin(x / 180) * 1.5;
         };
         const profile = Array.from({length: 201}, (_, i) => Math.round(elev(i * step) * 10) / 10);
-        const start = Math.max(0, 650 - off);
-        const end = 2150 - off;
+        const start = Math.max(0, start0 - off);
+        const end = top - off;
         return {
             source: 'route', routeName: 'Demo route', step, profile,
-            current: start === 0 && end > 0 ? {toTop: end, gain: 40, grade: 0.045} : null,
-            next: start > 0 ? {in: start, length: 1500, gain: 68, grade: 0.045} : null,
-            climbs: end > 0 ? [[start, end, 4.5]] : [],
+            current: start === 0 && end > 0 ? {toTop: end, gain: Math.round(end * grade), grade} : null,
+            next: start > 0 ? {in: start, length: len, gain: Math.round(len * grade), grade} : null,
+            climbs: end > 0 ? [[start, end, grade * 100]] : [],
         };
     }
 
@@ -52,7 +55,10 @@ export class DemoEngine extends Events.EventEmitter {
         const t = this.t;
         // Drift in and out of a group every ~40s
         const inGroup = (Math.sin(t / 13) + 1) / 2;
-        const draft = Math.max(0, Math.round(inGroup * 190 + Math.sin(t * 1.7) * 18 - 15));
+        const terrainNow = this._terrain(t);
+        // Drafting barely helps on a climb (~2-12% vs ~25% on the flat), so the demo reflects that.
+        const climbFactor = terrainNow.current ? 0.12 : 1;
+        const draft = Math.max(0, Math.round((inGroup * 190 + Math.sin(t * 1.7) * 18 - 15) * climbFactor));
         const power = Math.round(235 + Math.sin(t / 3) * 25 - inGroup * 40 + Math.sin(t * 2.3) * 8);
         this.draftKj += draft * 0.25 / 1000;
         this.powerSum += power * 0.25;
@@ -83,7 +89,7 @@ export class DemoEngine extends Events.EventEmitter {
         const me = {battery: Math.round(80 + Math.sin(t / 11) * 6), fresh: false, wkg1: Math.round(power / 75 * 10) / 10};
         // Same calculations as the live engine, so the demo can't show numbers that don't add up.
         const group = groupSummary([...ahead, ...behind]);
-        const terrain = this._terrain(t);
+        const terrain = terrainNow;
         this.emit('snapshot', {
             status: 'live',
             name: 'You (demo)',
@@ -103,7 +109,7 @@ export class DemoEngine extends Events.EventEmitter {
             },
             me,
             group,
-            attack: attackHint(me, group, terrain),
+            attack: this.tactics.update({me: {...me, cp: 280}, group, terrain, speed: 30, odo: t * 9, now: t}),
             terrain,
             ahead,
             behind,

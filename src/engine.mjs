@@ -8,6 +8,7 @@ import Zlib from 'node:zlib';
 import * as Zwift from './zwift/zwift.mjs';
 import {Fatigue} from './fatigue.mjs';
 import {TerrainTracker, LearnedRoads} from './terrain.mjs';
+import {Tactics} from './tactics.mjs';
 
 const HISTORY_MS = 5 * 60 * 1000;      // how far back we keep road positions for gap math
 const STALE_MS = 15 * 1000;            // drop riders we haven't heard from in this long
@@ -224,6 +225,7 @@ export class Engine extends Events.EventEmitter {
         this.profiles = new Map();     // athleteId -> {name, weight, ftp} | null (pending)
         this.learnedRoads = new LearnedRoads(learnedRoadsFile);
         this.terrain = new TerrainTracker({ahead: 5000, learned: this.learnedRoads});
+        this.tactics = new Tactics();
         this._profileQueue = new Set();
         this.status = 'starting';
         this.lastError = null;
@@ -558,7 +560,8 @@ export class Engine extends Events.EventEmitter {
                 console.warn('Terrain unavailable:', e.message);
             }
         }
-        const attack = attackHint(myFatigue, group, terrain);
+        const attack = this.tactics.update({me: myFatigue, group, terrain, speed: s.speed,
+                                            odo: s.distance || 0, now: s.worldTime / 1000});
         const snap = {
             status: 'live',
             watchingId: this.watchingId,
@@ -592,7 +595,7 @@ export class Engine extends Events.EventEmitter {
             this._lastSnapRecord = now;
             const brief = x => [x.athleteId, x.gap, x.dist, x.est ? 1 : 0, x.draft, x.battery, x.wkg1];
             this.recordLine({type: 'snap', d: snap.draft, eg: snap.eventSubgroupId, age: snap.stateAge,
-                             bat: myFatigue.battery, grp: group, atk: attack?.text || null,
+                             bat: myFatigue.battery, grp: group, atk: attack ? `${attack.kind}: ${attack.text}` : null,
                              climb: terrain?.current ? ['on', terrain.current.toTop] :
                                  terrain?.next ? ['next', terrain.next.in] : null,
                              ahead: snap.ahead.map(brief), behind: snap.behind.map(brief)});
@@ -626,33 +629,6 @@ export function groupSummary(rows) {
         avgBattery: Math.round(bats.reduce((a, b) => a + b, 0) / bats.length),
         minBattery: Math.min(...bats),
     };
-}
-
-
-// A nudge, not advice: you have clearly more in the tank than the riders around you, and either a
-// climb is about to start / you're on one, or the group is running on empty.
-export function attackHint(me, group, terrain) {
-    if (me.battery == null || group.avgBattery == null || me.fresh) {
-        return null;
-    }
-    const margin = me.battery - group.avgBattery;
-    if (me.battery < 55 || margin < 15) {
-        return null;
-    }
-    const onClimb = terrain?.current && terrain.current.toTop > 150;
-    const climbSoon = terrain?.next && terrain.next.in <= 1000;
-    const km = m => m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 50) * 50} m`;
-    const vs = `you ${me.battery}% vs group ${group.avgBattery}%`;
-    if (onClimb) {
-        return {reason: 'climb', text: `On the climb, ${km(terrain.current.toTop)} to top · ${vs}`};
-    }
-    if (climbSoon) {
-        return {reason: 'climb', text: `Climb in ${km(terrain.next.in)} · ${vs}`};
-    }
-    if (group.avgBattery <= 35) {
-        return {reason: 'tired', text: `Group is on empty · ${vs}`};
-    }
-    return null;
 }
 
 
