@@ -123,8 +123,9 @@ If the overlay hides behind a full-screen Zwift, switch Zwift to a windowed or b
 **It's a model, not mind-reading.** Zwift profile FTPs can be outdated or set low on purpose, and
 everyone is assumed to have the same reserve. Use it to spot who has been suffering.
 
-Every option (show or hide panels, reset stats, settings, *How to use…*) is in the gauge icon's
-menu. Shortcuts: **⌘⇧D / Ctrl+Shift+D** lock or unlock the overlay, **⌘⇧H / Ctrl+Shift+H** hide it.
+The overlay comes as **two windows** you can place and size separately (draft gauge + stats, and
+climb + riders); menu → *Layout* switches to a single window. Every option (show or hide panels, reset
+stats, settings, *How to use…*) is in the gauge icon's menu. Shortcuts: **⌘⇧D / Ctrl+Shift+D** lock or unlock the overlay, **⌘⇧H / Ctrl+Shift+H** hide it.
 
 ---
 

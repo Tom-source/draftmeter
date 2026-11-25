@@ -58,7 +58,8 @@ const defaultConfig = {
     monitorPasswordEnc: null,
     athleteId: null,
     athleteName: null,
-    overlayBounds: null,
+    overlayBounds: {},   // per overlay window: {draft, race, all}
+    layout: 'split',     // 'split' = draft window + race window, 'single' = one combined window
     locked: false,
     gaugeMax: 300,
     show: {gauge: true, ride: true, terrain: true, nearby: true},
@@ -68,7 +69,7 @@ const defaultConfig = {
 
 let config;
 let engine;
-let overlay;
+const overlays = new Map();   // part ('draft' | 'race' | 'all') -> BrowserWindow
 let setupWin;
 let tray;
 let lastSnapshot;
@@ -81,9 +82,13 @@ function loadConfig() {
         const saved = JSON.parse(FS.readFileSync(configFile(), 'utf8'));
         const cfg = {...defaultConfig, ...saved, show: {...defaultConfig.show, ...saved.show}};
         if ((cfg.layoutVersion || 1) < 2) {
-            cfg.overlayBounds = null;  // v2 added climb + battery panels; old saved size is too small
+            cfg.overlayBounds = {};  // v2 added climb + battery panels; old saved size is too small
             cfg.layoutVersion = 2;
         }
+        if (cfg.overlayBounds && 'x' in cfg.overlayBounds) {
+            cfg.overlayBounds = {all: cfg.overlayBounds};  // from before the split layout
+        }
+        cfg.overlayBounds ||= {};
         return cfg;
     } catch {
         return structuredClone(defaultConfig);
@@ -149,7 +154,7 @@ async function startEngine() {
     });
     engine.on('snapshot', snap => {
         lastSnapshot = snap;
-        overlay?.webContents.send('snapshot', snap);
+        sendToOverlays('snapshot', snap);
         updateTrayTitle(snap);
     });
     engine.on('status', status => console.info('[engine]', status));
@@ -159,7 +164,7 @@ async function startEngine() {
         console.error('Engine start failed:', e);
         const msg = {status: 'error', error: e.message};
         lastSnapshot = msg;
-        overlay?.webContents.send('snapshot', msg);
+        sendToOverlays('snapshot', msg);
         setTimeout(() => engine && startEngine(), 30000);  // retry; e.g. network not up yet
     }
 }
@@ -178,20 +183,58 @@ function stopEngine() {
 
 // ---------- Windows ----------
 
-function createOverlay() {
+// The overlay is one window ('all') or two ('draft': gauge + draft stats, 'race': climb + riders).
+const overlayParts = () => config.layout === 'single' ? ['all'] : ['draft', 'race'];
+
+function defaultBounds(part) {
     const area = screen.getPrimaryDisplay().workArea;
-    const b = config.overlayBounds || {width: 360, height: 760, x: area.x + area.width - 320, y: area.y + 60};
-    overlay = new BrowserWindow({
-        ...b,
+    const right = area.x + area.width;
+    return {
+        all: {width: 360, height: 760, x: right - 380, y: area.y + 60},
+        draft: {width: 260, height: 330, x: right - 280, y: area.y + 40},
+        race: {width: 360, height: 450, x: right - 380, y: area.y + 390},
+    }[part];
+}
+
+
+function sendToOverlays(channel, data) {
+    for (const win of overlays.values()) {
+        win.webContents.send(channel, data);
+    }
+}
+
+
+function createOverlays() {
+    for (const part of overlayParts()) {
+        if (!overlays.has(part)) {
+            createOverlayWindow(part);
+        }
+    }
+    applyLock();
+}
+
+
+function closeOverlays() {
+    for (const win of overlays.values()) {
+        win._replaced = true;   // its 'closed' event may come later; it must not quit the app
+        win.destroy();
+    }
+    overlays.clear();
+}
+
+
+function createOverlayWindow(part) {
+    const win = new BrowserWindow({
+        ...(config.overlayBounds[part] || defaultBounds(part)),
         show: false,  // shown with showInactive() below: never steal the keyboard from setup/Zwift
-        minWidth: 220,
-        minHeight: 160,
+        minWidth: 200,
+        minHeight: 120,
         frame: false,
         transparent: true,
         hasShadow: false,
         resizable: true,
         focusable: !config.locked,
-        skipTaskbar: !config.showInDock,
+        skipTaskbar: !config.showInDock || part === 'race',  // one taskbar entry is enough
         fullscreenable: false,
         backgroundColor: '#00000000',
         webPreferences: {
@@ -200,37 +243,54 @@ function createOverlay() {
             contextIsolation: true,
         },
     });
+    overlays.set(part, win);
     // 'screen-saver' level + visibleOnFullScreen keeps us above a full screen Zwift window.
-    overlay.setAlwaysOnTop(true, 'screen-saver');
+    win.setAlwaysOnTop(true, 'screen-saver');
     // With a Dock icon, Electron must not flip the app to "accessory" mode (that would hide the icon).
-    overlay.setVisibleOnAllWorkspaces(true, {visibleOnFullScreen: true, skipTransformProcessType: config.showInDock});
-    overlay.loadFile(Path.join(uiDir, 'overlay.html'));
-    overlay.once('ready-to-show', () => overlay?.showInactive());
-    overlay.webContents.on('did-finish-load', () => {
+    win.setVisibleOnAllWorkspaces(true, {visibleOnFullScreen: true, skipTransformProcessType: config.showInDock});
+    win.loadFile(Path.join(uiDir, 'overlay.html'), {query: {part}});
+    win.once('ready-to-show', () => !win.isDestroyed() && win.showInactive());
+    win.webContents.on('did-finish-load', () => {
         pushOverlayConfig();
         if (lastSnapshot) {
-            overlay.webContents.send('snapshot', lastSnapshot);
+            win.webContents.send('snapshot', lastSnapshot);
         }
     });
     const saveBounds = () => {
-        config.overlayBounds = overlay.getBounds();
+        config.overlayBounds[part] = win.getBounds();
         saveConfig();
     };
-    overlay.on('moved', saveBounds);
-    overlay.on('resized', saveBounds);
-    overlay.on('closed', () => {
-        overlay = null;
-        // Closing the overlay from the taskbar/Dock window list means "I'm done": quit the app.
-        if (!quitting && config.showInDock) {
+    win.on('moved', saveBounds);
+    win.on('resized', saveBounds);
+    win.on('closed', () => {
+        if (overlays.get(part) === win) {
+            overlays.delete(part);
+        }
+        // Closing an overlay from the taskbar/Dock window list means "I'm done": quit the app.
+        if (!quitting && !win._replaced && config.showInDock) {
             app.quit();
         }
     });
-    applyLock();
+}
+
+
+function setLayout(layout) {
+    if (config.layout === layout) {
+        return;
+    }
+    config.layout = layout;
+    saveConfig();
+    const visible = overlays.size > 0;
+    closeOverlays();
+    if (visible) {
+        createOverlays();
+    }
+    rebuildTrayMenu();
 }
 
 
 function pushOverlayConfig() {
-    overlay?.webContents.send('config', {
+    sendToOverlays('config', {
         locked: config.locked,
         show: config.show,
         gaugeMax: config.gaugeMax,
@@ -240,12 +300,11 @@ function pushOverlayConfig() {
 
 
 function applyLock() {
-    if (!overlay) {
-        return;
+    // Locked = clicks pass straight through to Zwift. Unlocked = drag/resize the overlays.
+    for (const win of overlays.values()) {
+        win.setIgnoreMouseEvents(config.locked, {forward: true});
+        win.setFocusable(!config.locked);
     }
-    // Locked = clicks pass straight through to Zwift. Unlocked = drag/resize the overlay.
-    overlay.setIgnoreMouseEvents(config.locked, {forward: true});
-    overlay.setFocusable(!config.locked);
     pushOverlayConfig();
     rebuildTrayMenu();
 }
@@ -258,15 +317,29 @@ function toggleLock() {
 }
 
 
-function toggleOverlay() {
-    if (!overlay) {
-        createOverlay();
-    } else if (overlay.isVisible()) {
-        overlay.hide();
+const overlaysVisible = () => [...overlays.values()].some(w => w.isVisible());
+
+function showOverlays() {
+    if (!overlays.size) {
+        createOverlays();
     } else {
-        overlay.showInactive();
+        for (const win of overlays.values()) {
+            win.showInactive();
+        }
     }
     rebuildTrayMenu();
+}
+
+
+function toggleOverlay() {
+    if (overlaysVisible()) {
+        for (const win of overlays.values()) {
+            win.hide();
+        }
+        rebuildTrayMenu();
+    } else {
+        showOverlays();
+    }
 }
 
 
@@ -401,8 +474,14 @@ function rebuildTrayMenu() {
         {label: isDemo ? 'Draftmeter (DEMO data)' : `Watching: ${config.athleteName || config.athleteId || '—'}`,
          enabled: false},
         {type: 'separator'},
-        {label: overlay?.isVisible() ? 'Hide overlay' : 'Show overlay', accelerator: 'CmdOrCtrl+Shift+H',
+        {label: overlaysVisible() ? 'Hide overlay' : 'Show overlay', accelerator: 'CmdOrCtrl+Shift+H',
          click: toggleOverlay},
+        {label: 'Layout', submenu: [
+            {label: 'Two windows (draft · race)', type: 'radio', checked: config.layout !== 'single',
+             click: () => setLayout('split')},
+            {label: 'One window', type: 'radio', checked: config.layout === 'single',
+             click: () => setLayout('single')},
+        ]},
         {label: config.locked ? 'Unlock overlay (move/resize)' : 'Lock overlay (click-through)',
          accelerator: 'CmdOrCtrl+Shift+D', click: toggleLock},
         {label: 'Reset ride stats', click: () => engine?.resetStats()},
@@ -481,8 +560,8 @@ ipcMain.handle('setup:save', async (ev, {athleteId, athleteName}) => {
     config.athleteName = athleteName || null;
     saveConfig();
     rebuildTrayMenu();
-    if (!overlay) {
-        createOverlay();
+    if (!overlays.size) {
+        createOverlays();
     }
     startEngine();
     return {ok: true, firstTime};  // the wizard shows its "You're set" page
@@ -585,10 +664,10 @@ function toggleShowInDock() {
     config.showInDock = !config.showInDock;
     saveConfig();
     applyDockVisibility();
-    if (overlay) {
-        overlay.setSkipTaskbar(!config.showInDock);
-        overlay.setVisibleOnAllWorkspaces(true, {visibleOnFullScreen: true,
-                                                 skipTransformProcessType: config.showInDock});
+    for (const [part, win] of overlays) {
+        win.setSkipTaskbar(!config.showInDock || part === 'race');
+        win.setVisibleOnAllWorkspaces(true, {visibleOnFullScreen: true,
+                                             skipTransformProcessType: config.showInDock});
     }
     rebuildTrayMenu();
 }
@@ -601,11 +680,8 @@ app.on('activate', () => {
     }
     if (!isConfigured()) {
         openSetup();
-    } else if (!overlay) {
-        createOverlay();
     } else {
-        overlay.showInactive();
-        rebuildTrayMenu();
+        showOverlays();
     }
 });
 
@@ -616,11 +692,8 @@ if (!Process.argv.includes('--diag') && !app.requestSingleInstanceLock()) {
 app.on('second-instance', () => {
     if (!isConfigured()) {
         openSetup();
-    } else if (!overlay) {
-        createOverlay();
     } else {
-        overlay.showInactive();
-        rebuildTrayMenu();
+        showOverlays();
     }
 });
 
@@ -659,10 +732,15 @@ app.whenReady().then(() => {
     globalShortcut.register('CmdOrCtrl+Shift+D', toggleLock);
     globalShortcut.register('CmdOrCtrl+Shift+H', toggleOverlay);
     if (isDemo || isConfigured()) {
-        createOverlay();
+        createOverlays();
         startEngine();
     } else {
         openSetup();
+    }
+    if (Process.env.DRAFTMETER_LAYOUT_TEST) {
+        setTimeout(() => setLayout('single'), 2000);
+        setTimeout(() => setLayout('split'), 3000);
+        setTimeout(() => setLayout('single'), 4000);
     }
     // Dev aid: DRAFTMETER_CAPTURE=/path/out.png npm run demo -> screenshot of the windows, then quit.
     if (Process.env.DRAFTMETER_CAPTURE) {
@@ -671,8 +749,9 @@ app.whenReady().then(() => {
         }
         setTimeout(async () => {
             const out = Process.env.DRAFTMETER_CAPTURE;
-            if (overlay) {
-                FS.writeFileSync(out, (await overlay.webContents.capturePage()).toPNG());
+            for (const [part, win] of overlays) {
+                const file = part === 'all' ? out : out.replace(/\.png$/, `-${part}.png`);
+                FS.writeFileSync(file, (await win.webContents.capturePage()).toPNG());
             }
             if (setupWin) {
                 FS.writeFileSync(out.replace(/\.png$/, '-setup.png'), (await setupWin.webContents.capturePage()).toPNG());
